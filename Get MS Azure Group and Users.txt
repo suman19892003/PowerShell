@@ -1,0 +1,76 @@
+##This script will fetch all group and users in that group from Azure AD and create CSV file
+
+$csvFileDir = "C:\CsvData\";
+$jsonFileDir = "C:\JsonData\";
+
+$User = "Suman.kumar01@tenantdev.com"
+$PlainPassword = 'Baw14489'
+$SecurePassword = $PlainPassword | ConvertTo-SecureString -AsPlainText -Force
+$cred = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $User, $SecurePassword
+
+Connect-AzureAD -Credential $cred
+
+#setup the csv headers
+    $timeRun = get-date -Format hhmmss
+    $dataCsv = $csvFileDir + $logFile + $timeRun + ".csv"
+    "UserGroup" + "|" + `
+    "IdName" + "|" + `
+    "LMOfficeNumber" + "|" + `
+    "DeptID" + "|" + `
+    "WorkPhone" + "|" + `
+    "CellPhone" + "|" + `
+    "Mailstop" + "|" + `
+    "Company" + "|" + `
+    "Division" + "|" + `
+    "LM-MarketName" + "|" + `
+    "LM-MarketCode" + "|" + `
+    "LM-SBUCode" + "|" + `
+    "LMJobCode" + "|" + `
+    "LMJobFamily" + "|" + `
+    "LMJobFunction" + "|" + `
+    "LMSegmentCode" + "|" + `
+    "enterprisePIN" `
+    > $dataCsv;
+
+
+$azurgroups= Get-AzureADGroup
+ ForEach ($groups in $azurgroups)
+ {
+$ADGroupName=$groups.DisplayName
+ Write-Host "Group Name" $ADGroupName
+    $aadUsers = Get-AzureADGroupMember -objectid $groups.ObjectId
+    #$aadUser | Select -ExpandProperty ExtensionProperty
+    # Serialize User Object to JSON
+    $aadUsers.ToJson()
+    ForEach ($employee in $aadUsers){
+        Write-Host "User Name" $employee.displayName
+
+        $ADGroupName + "|" + `
+        $employee.mail + "|" + `
+        $employee.telephoneNumber + "|" + `
+        $employee.department + "|" + `
+        $employee.telephoneNumber + "|" + `
+        $employee.mobile + "|" + `
+        $employee.info + "|"  + `
+        $employee.companyName + "|" + `
+        $employee.division + "|" + `
+        $employee.Extension.'LM-MarketName' + "|" + `
+        $employee.Extension.'LM-MarketCode' + "|" + `
+        $employee.Extension.'LM-SBUCode' + "|" + `
+        $employee.Extension.LMJobCode + "|" + `
+        $employee.Extension.LmJobFamily + "|" + `
+        $employee.Extension.LMJobFunction + "|" + `
+        $employee.Extension.LMSegmentCode + "|" + `
+        $employee.Extension.SamAccountName `
+        >> $dataCsv
+    }
+}
+
+    $timeRun = get-date -Format hhmmss
+    $dataJson = $jsonFileDir + $logFile + $timeRun + ".json"
+    #manipulate the upload file data because i'm to lazy to figure out formatting the values in an array for json
+    $value = Get-Content -Path $dataCsv | ConvertFrom-Csv -Delimiter "|" | ConvertTo-Json
+    "{" > $dataJson
+    Add-Content -Path $dataJson "`t`"value`":"
+    Add-Content -Path $dataJson $value
+    Add-Content -Path $dataJson "}"
