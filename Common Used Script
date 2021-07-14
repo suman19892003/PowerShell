@@ -1,0 +1,34 @@
+//Connect to SharePoint Online/Azure AD
+$User = "userID
+$PlainPassword = 'PWD'
+$SecurePassword = $PlainPassword | ConvertTo-SecureString -AsPlainText -Force
+$cred = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $User, $SecurePassword 
+Connect-AzureAD -Credential $cred
+Connect-PnpOnline -Url 'siteURL' -Credential $cred
+
+//Fetch User custom property and create JSON
+$users = Get-AzureADUser -Filter "startswith(UserPrincipalName,'kumar')" -All $true | 
+Select-Object @{N='EmailID';E={if($_.UserPrincipalName){$_.UserPrincipalName}else{""}}}, 
+@{N='enterprisePIN';E={if($_.ExtensionProperty["employeeId"]){$_.ExtensionProperty["employeeId"]}else{""}}}, 
+@{N= ‘enterpriseOU';E={if($_.ExtensionProperty["onPremisesDistinguishedName"]){$_.ExtensionProperty["onPremisesDistinguishedName "]}else{""}}},
+@{N='CellPhone';E={if($_.Mobile){$_.Mobile}else{""}}}
+
+//Filter JSON data to get specific OU data
+$filteredData = $users | Where-Object enterpriseOU -Like '*OU=Canada,OU=LM Users,DC=lm,DC=lmig,DC=com' 
+
+//Array Iteration in PowerShell
+$UPNColl = "a","b","c" 
+foreach ($UPN in $UPNColl){ 
+  Write-Output "Getting details for: $UPN" 
+}
+
+//Upload data to SharePoint Library
+$json = ConvertTo-Json @($filteredData)  -Compress
+$json ='{ "value":'+ $json + '}'
+$Stream = [IO.MemoryStream]::new([Text.Encoding]::UTF8.GetBytes($json))
+Write-Output "Connecting to SP List"
+Connect-PnPOnline -Url https://siteURL/HRSync -Credential $cred  
+Write-Output "SharePoint Connection successful in Web Jobs"
+$splib = "UserProfileData_Canada" #library name
+$data=Add-PnPFile  -Folder $splib -Stream $Stream -FileName $dataJson
+Write-Output "All Task completed."
