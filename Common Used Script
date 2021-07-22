@@ -16,6 +16,14 @@ Select-Object @{N='EmailID';E={if($_.UserPrincipalName){$_.UserPrincipalName}els
 //Filter JSON data to get specific OU data
 $filteredData = $users | Where-Object enterpriseOU -Like '*OU=Canada,OU=LM Users,DC=lm,DC=lmig,DC=com' 
 
+
+//Multiple Filter to apply on JSON
+$filteredData = $users | Where-Object {$_.enterpriseOU -Like '*OU=Central,OU=LM Users,DC=lm,DC=lmig,DC=com' -or
+        $_.enterpriseOU -Like '*OU=Mid-Atlantic,OU=LM Users,DC=lm,DC=lmig,DC=com' -or
+        $_.enterpriseOU -Like '*OU=Mid-West,OU=LM Users,DC=lm,DC=lmig,DC=com' -or
+        $_.enterpriseOU -Like '*OU=New-England,OU=LM Users,DC=lm,DC=lmig,DC=com' }
+
+
 //Array Iteration in PowerShell
 $UPNColl = "a","b","c" 
 foreach ($UPN in $UPNColl){ 
