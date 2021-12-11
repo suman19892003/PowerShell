@@ -60,8 +60,8 @@ Set-AzureADUser -ObjectId 33bb18ff-75e0-4bef-a158-0bbbae3c9004 -JobTitle "Senior
 import-module activedirectory
 # Open an Excel workbook first:
 $ExcelObj = New-Object -comobject Excel.Application
-$ExcelWorkBook = $ExcelObj.Workbooks.Open("C:\PS\corp_ad_users.xlsx")
-$ExcelWorkSheet = $ExcelWorkBook.Sheets.Item("CORP_Users")
+$ExcelWorkBook = $ExcelObj.Workbooks.Open("C:\PS\corp_ad_users.xlsx") # name of excel file
+$ExcelWorkSheet = $ExcelWorkBook.Sheets.Item("All_Users") # name of excel sheet
 # Get the number of filled in rows in the XLSX worksheet
 $rowcount=$ExcelWorkSheet.UsedRange.Rows.Count
 # Loop through all rows in Column 1 starting from Row 2 (these cells contain the domain usernames)
