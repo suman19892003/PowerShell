@@ -1,0 +1,40 @@
+﻿#This script will read excel file to take user email and update the same excel with the users manager email
+
+# Importing Active Directory module into PowerShell session
+#import-module activedirectory
+
+$User = "useremail id"
+$PlainPassword = 'pwd'
+
+$SecurePassword = $PlainPassword | ConvertTo-SecureString -AsPlainText -Force
+$cred = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $User, $SecurePassword
+
+Connect-AzureAD -Credential $cred
+Write-Output "Azure AD Connection successful in Web Jobs"
+# Open an Excel workbook first:
+$ExcelObj = New-Object -comobject Excel.Application
+$ExcelWorkBook = $ExcelObj.Workbooks.Open("C:\Users\n1552017\Documents\GitHub\Surety_Users.xlsx")
+$ExcelWorkSheet = $ExcelWorkBook.Sheets.Item("Users")
+# Get the number of filled in rows in the XLSX worksheet
+$rowcount=$ExcelWorkSheet.UsedRange.Rows.Count
+
+$rowNo, $colFirstName = 1, 1
+
+# Loop through all rows in Column 1 starting from Row 2 (these cells contain the domain usernames)
+for($i=2;$i -le $rowcount;$i++){
+
+$ADusername=$ExcelWorkSheet.Columns.Item(1).Rows.Item($i).Text
+
+$ADuserProp = Get-AzureADUser -Filter "startswith(displayName,'$ADusername')" | Select ObjectId
+
+#Get Manager Details
+
+$Manager=(Get-AzureADUserManager -ObjectId $ADuserProp.ObjectId).UserPrincipalName
+
+# Fill in the cells with the data received from AD
+$ExcelWorkSheet.Columns.Item(2).Rows.Item($i) = $Manager
+
+}
+# Save the XLS file and close Excel
+$ExcelWorkBook.Save()
+$ExcelWorkBook.close($true)
