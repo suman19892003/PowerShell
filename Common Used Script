@@ -44,3 +44,15 @@ $myObj=@{}
 $myObj.BoolVal=$true
 $myObj.StringVal="This is custom string value"
 $ResultObj=(New-Object PSObject -Property $myObj)
+
+//Filter user based on display name from Azure AD
+Get-AzureADUser -Filter "startswith(displayName,'suman')"
+
+//Filter based on multiple OR condition
+Get-AzureADUser -Filter "Department eq 'Finance' or Department eq 'Marketing'"
+
+//Get and Set Azure AD details
+Get-AzureADUser -ObjectId 33bb18ff-75e0-4bef-a158-0bbbae3c9004 | Select JobTitle
+Set-AzureADUser -ObjectId 33bb18ff-75e0-4bef-a158-0bbbae3c9004 -JobTitle "Senior Manager SecOps"
+
+
