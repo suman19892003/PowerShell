@@ -1,0 +1,37 @@
+##This Powershell script will read data from CSV and Update SharePoint user profile.
+
+$sitecollectionUrl = "https://domain-admin.sharepoint.com"
+$csvFile = 'C:\Suman\UserData.csv'  
+$credentials = Get - Credential
+Connect - PnPOnline - Url $sitecollectionUrl - Credentials $credentials  
+$wshell = New - Object - ComObject Wscript.Shell  
+try {  
+    $ctx = Get - PnPContext  
+} catch {  
+    $wshell.Popup("Please connect to tenant admin site!", 0, "Done", 0x1)  
+}  
+if ($ctx) {  
+    $UserData = Import - Csv $csvFile  
+    $rows = $UserData | measure  
+    $ColumnName = $UserData | get - member | ? {-not($_.Name - in @("Equals", "GetHashCode", "GetType", "ToString"))  
+    } | select "Name"  
+    for ($i = 0; $i - lt $rows.Count; $i++) {  
+        $Email = $UserData[$i].($ColumnName[0].Name)  
+        Write - Host "Updating data for $Email"  
+        for ($j = 1; $j - lt $ColumnName.Count; $j++) {  
+            $value = $UserData[$i].($ColumnName[$j].Name)  
+            if (($value.Length - ge 3) - and(($value.Substring(0, 3) - eq "i:0") - or($value.SubString(0, 3) - eq "c:0"))) {  
+                Set - PnPUserProfileProperty - Account $Email - PropertyName $ColumnName[$j].Name - Values $value - ErrorAction SilentlyContinue  
+            } else {#  
+                split the string using the | as a delimiter and load the values into the field.  
+                Set - PnPUserProfileProperty - Account $Email - PropertyName $ColumnName[$j].Name - Values $value.Split("|") - ErrorAction SilentlyContinue  
+            }  
+            if ($ ? ) {  
+                Write - Host " Set $($ColumnName[$j].Name) --> $($UserData[$i].($ColumnName[$j].Name))." - ForegroundColor Green  
+            } else {  
+                Write - Host " Could not set $($ColumnName[$j].Name) --> $($UserData[$i].($ColumnName[$j].Name)). $($error[0].Exception.message)" - ForegroundColor Red  
+            }  
+        }  
+    }  
+    $wshell.Popup("Operation Completed!", 0, "Done", 0x1)  
+}
