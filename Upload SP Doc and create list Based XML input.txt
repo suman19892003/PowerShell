@@ -1,0 +1,207 @@
+#Parameters
+# this code will read path from XML file and upload physical file to sharepoint document library
+# it will create folder inside document library dynamically
+# After document upload it will update meatadata also
+# Once metadata updated it will create item inside list with Parent ID of library
+
+
+$SiteURL = "https://mysite.sharepoint.us/sites/PNCInvArchive"
+
+$LibraryName = "InvoiceDoc"
+$FilePath = ""
+$LocalFolderPath= "D:\PNC\PNC_842180_ATI_ISS_IMAGES_20240628\"
+
+#Connect to PnP Online
+Connect-PnPOnline -Url $SiteURL -UseWebLogin
+
+#XML Operation
+Get-ChildItem $LocalFolderPath -Filter *.xml | Foreach-Object {
+	
+	#New Code
+	$path = $_.FullName #'D:\Suman\Test\TestXMLInvoice.xml'
+	[xml]$XmlDocument = Get-Content $_.FullName
+	
+    [XML]$invoicefile = Get-Content $_.FullName
+    $invoiceColl= $invoicefile.InvoiceCollection.InvoiceItem | Where-Object { [int]$_.InvoiceNo -gt 2557 }
+	
+	[int]$count=0
+    $invoiceColl | ForEach-Object {
+	$count++
+	if($count %200 -eq 0){
+		Write-Host "Establish SharePoint Connection"
+		#Connect to PnP Online
+		Connect-PnPOnline -Url $SiteURL -UseWebLogin
+	}
+	else{
+		Write-Host "Dont Trigger"
+	}
+	
+	$DynamicFolderURL="/"
+	$splittedFileName= $_.InvoiceSeries + $_.InvoiceNo + ".pdf"
+
+	$FilePath = $LocalFolderPath + $splittedFileName
+	$FileName = Split-Path -Path $FilePath -Leaf
+
+	$Invoiceyear=if($_.InvoiceDate){ Get-Date(($_.InvoiceDate).Split('T')[0])}else{$null}
+
+	$DynamicFolderURL=$DynamicFolderURL+$Invoiceyear.year
+
+	$InvoiceURL= 'https://atimetal.sharepoint.us/sites/PNCInvArchive/Lists/InvoiceAccountCoding/AllItems.aspx?FilterField1=ParentInvoiceNo&FilterValue1='+$_.InvoiceNo
+	$InvoiceText=', Click Here'
+	$finalURL= $InvoiceURL + $InvoiceText
+	
+	$xmlLibraryObject = @{
+    		'Title'=$splittedFileName
+    		'InvoiceSeries'=$_.InvoiceSeries
+			'InvoiceNo'=$_.InvoiceNo
+			'Company'=$_.Company
+			'Credit'=$_.Credit
+			'InvoiceType'=$_.Type
+			'Status'=$_.Status
+			'Classified'=$_.Classified
+			'Blocked'=$_.Blocked
+			'Supplier'=$_.Supplier
+			'SupplierInvoiceNo'=$_.SupplierInvoiceNo
+			'PurchaseOrderNo'=$_.PurchaseOrderNo
+			'ContractNo'=$_.ContractNo
+			'InvoiceDate'=if($_.InvoiceDate){ Get-Date(($_.InvoiceDate).Split('T')[0]) -format yyyy-MM-dd}else{$null}
+			'DueDate'=if($_.DueDate){ Get-Date(($_.DueDate).Split('T')[0]) -format yyyy-MM-dd}else{$null}
+			'AccountCodingDate'=if($_.AccountCodingDate){ Get-Date(($_.AccountCodingDate).Split('T')[0]) -format yyyy-MM-dd}else{$null}	
+			'Currency'=$_.Currency
+			'Amount'=$_.Amount
+			'BaseAmount'=$_.BaseAmount
+			'VatAmount'=$_.VatAmount
+			'BaseVatAmount'=$_.BaseVatAmount
+			'FeeAmount1'=$_.FeeAmount1
+			'FeeAmount2'=$_.FeeAmount2
+			'FeeAmount3'=$_.FeeAmount3
+			'AuthorizationUser'=$_.AuthorizationUser
+			'AuthorizationRole'=$_.AuthorizationRole
+			'DebtAccountID'=$_.DebtAccountID			
+			'AccountID'=$_.AccountID
+			'Object1ID'=$_.Object1ID
+			'Object2ID'=$_.Object2ID
+			'Object3ID'=$_.Object3ID
+			'Object4ID'=$_.Object4ID
+			'Object5ID'=$_.Object5ID
+			'Object6ID'=$_.Object6ID
+			'Object7ID'=$_.Object7ID
+			'Object8ID'=$_.Object8ID
+			'ArrivalAccountCoded'= if($_.ArrivalAccountCoded){$_.ArrivalAccountCoded}else{""}
+			'ArrivalAccountCodingDate'= if($_.ArrivalAccountCodingDate){(Get-Date(($_.ArrivalAccountCodingDate).Split('T')[0]) -format yyyy-MM-dd)}else{$null}
+			'Asset'=$_.Asset
+			'VoucherSeries'=$_.VoucherSeries
+			'VoucherNo'=$_.VoucherNo
+			'PaymentDate'= if($_.PaymentDate){ Get-Date(($_.PaymentDate).Split('T')[0]) -format yyyy-MM-dd}else{$null}
+			'AlternativeID'=$_.AlternativeID
+			'LinkedInvoiceID'=$_.LinkedInvoiceID
+			'PayReference'=$_.PayReference
+			'SupplierDeliveryNote'=$_.SupplierDeliveryNote		
+			'ExtraID'=$_.ExtraID
+			'ExtraAmount'=$_.ExtraAmount
+			'FileTypeID'=$_.FileTypeID
+			'MatchedContractID'=$_.MatchedContractID
+			'Group1'=$_.Group1
+			'Group2'=$_.Group2
+			'Group3'=$_.Group3
+			'LatestComment'=$_.LatestComment
+			'AccountCodingRef' = $finalURL
+	}
+	
+	$InvoiceNo = $_.InvoiceNo
+	
+	$data = foreach ($entity in $invoicefile.InvoiceCollection.InvoiceItem) {
+		#write-host "Invoice No is " $_.InvoiceNo
+		[PSCustomObject]@{
+        'AccountCoding' = ($entity.AccountCoding | Where-Object { $entity.InvoiceNo -eq $InvoiceNo })	
+		}
+	}
+	
+	$data.AccountCoding | Foreach-Object {
+		$xmlListObject = @{
+    		'Title'=$splittedFileName
+			'ParentInvoiceNo'=$InvoiceNo
+			'ParentInvoiceYear'=$Invoiceyear.year
+    		'AccountCodingType'=$_.Type
+    		'CreateUser'=$_.CreateUser
+			'CreateRole'=$_.CreateRole
+			'SignUser'=$_.SignUser
+			'SignRole'=$_.SignRole
+			'Account'=$_.Account
+			'Object1'=$_.Object1
+			'Object2'=$_.Object2
+			'Object3'=$_.Object3
+			'Object4'=$_.Object4
+			'Object5'=$_.Object5
+			'Object6'=$_.Object6
+			'Currency'=$_.Currency
+			'Amount'=$_.Amount
+			'BaseAmount'=$_.BaseAmount
+			'Number'=$_.Number
+			'VatDeduction'=$_.VatDeduction
+			'ForwardInvoice'=$_.ForwardInvoice
+		}
+		# Add items to SP List
+		write-host "Adding List Data for Invoice No " $InvoiceNo
+		Add-PnPListItem -List 'InvoiceAccountCoding' -Values $xmlListObject
+	}
+	#Directory Iterate
+	$fileColl= Get-ChildItem $LocalFolderPath -Filter *.pdf -recurse | Where-Object{($_.Name -eq $splittedFileName)}
+	#write-host $fileColl.count
+	if($fileColl.count -gt 0){
+		#write-host "Upload File "
+
+		#SharePoint Operation
+ 
+		
+		# Get the library
+		$Library = Get-PnPList -Identity $LibraryName -Includes RootFolder
+		
+		$FileURL = $library.RootFolder.ServerRelativeUrl+ $DynamicFolderURL +"/"+$FileName
+ 
+		# Check if the file exists
+		if (!(Get-PnPFile -Url $FileURL -AsListItem -ErrorAction SilentlyContinue)) {
+    			# Upload the file
+				$folderURL="/sites/DTDEVApplication/"
+				$folderURL=$LibraryName+$DynamicFolderURL
+    			#Add-PnPFile -Path $FilePath -Folder $LibraryName -Values $xmlLibraryObject
+				
+				write-host "Folder URL is " $folderURL
+				write-host "Uploading file Data for Invoice No " $_.InvoiceNo
+				
+				#Try to Get the Folder
+				$Folder = Get-PnPFolder -Url $folderURL -ErrorAction SilentlyContinue
+				If($Folder -ne $null)
+				{
+					Write-Host -f Green "Folder exists!"
+					
+				}
+				Else
+				{
+					Write-Host -f Yellow "Folder does not exists,so creating!"
+					Add-PnPFolder -Name $Invoiceyear.year -Folder $LibraryName -ErrorAction Stop
+				}
+
+				Add-PnPFile -Path $FilePath -Folder $folderURL -Values $xmlLibraryObject
+
+    			Write-Host -f Green "File uploaded successfully."
+
+		} else {
+    			#Write-Host -f Yellow "File already exists!"
+    			#Get the File from SharePoint
+			#$File = Get-PnPFile -Url $FileURL -AsListItem
+ 
+			#Update document properties
+			#Set-PnPListItem -List "XmlDoc" -Identity $File.Id -Values @{"Title" = $FileName;"Test1"="Test1";"Test2"="Test2"}
+			#Write-Host -f Green "File updated successfully."
+		}
+
+		}
+		else{
+		write-host "File not available"
+		#Connect to PnP Online
+		Connect-PnPOnline -Url $SiteURL -UseWebLogin
+		}
+		
+	}
+}
